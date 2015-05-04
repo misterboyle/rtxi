@@ -26,90 +26,18 @@
 /* For simplicity sake, a maximum channel count is defined */
 #define MAX_NB_CHAN 32
 /* One hundred triggered scans by default */
-#define NB_SCAN 100
+#define NB_SCAN 1000
 /* Default name of analogy */
 #define FILENAME "analogy0"
 /* Default buffer size */
-#define BUF_SIZE 10000
+#define BUF_SIZE 30000
 
 static unsigned char buf[BUF_SIZE];
 static char *filename = FILENAME;
-static char *str_chans = "0,1,2,3";
+static char *str_chans = "2";
 static unsigned int chans[MAX_NB_CHAN];
 static int use_mmap = 1;
 static unsigned long wake_count = 0;
-
-using namespace DAQ;
-
-int dump_text(a4l_desc_t *dsc, a4l_cmd_t *cmd, unsigned char *buf, int size)
-{
-	static int cur_chan;
-
-	int i, err = 0, tmp_size = 0;
-	char *fmts[MAX_NB_CHAN];
-	a4l_chinfo_t *chans[MAX_NB_CHAN];
-
-	for (i = 0; i < cmd->nb_chan; i++) {
-		int width;
-
-		err = a4l_get_chinfo(dsc,
-				     cmd->idx_subd,
-				     cmd->chan_descs[i], &chans[i]);
-		if (err < 0) {
-			fprintf(stderr,
-				"cmd_read: a4l_get_chinfo failed (ret=%d)\n",
-				err);
-			goto out;
-		}
-
-		width = a4l_sizeof_chan(chans[i]);
-		if (width < 0) {
-			fprintf(stderr,
-				"cmd_read: incoherent info for channel %d\n",
-				cmd->chan_descs[i]);
-			err = width;
-			goto out;
-		}
-
-		switch(width) {
-		case 1:
-			fmts[i] = "0x%02x ";
-			break;
-		case 2:
-			fmts[i] = "0x%04x ";
-			break;
-		case 4:
-		default:
-			fmts[i] = "0x%08x ";
-			break;
-		}
-	}
-
-	while (tmp_size < size) {
-		unsigned long value;
-
-		err = a4l_rawtoul(chans[cur_chan], &value, buf + tmp_size, 1);
-		if (err < 0)
-			goto out;
-
-		fprintf(stdout, fmts[cur_chan], value);
-
-		/* We assume a4l_sizeof_chan() cannot return because
-		   we already called it on the very same channel
-		   descriptor */
-		tmp_size += a4l_sizeof_chan(chans[cur_chan]);
-
-		if(++cur_chan == cmd->nb_chan) {
-			fprintf(stdout, "\n");
-			cur_chan = 0;
-		}
-	}
-
-	fflush(stdout);
-
-out:
-	return err;
-}
 
 /* The command to send by default */
 a4l_cmd_t cmd = {
@@ -125,9 +53,81 @@ a4l_cmd_t cmd = {
 	.scan_end_arg = 0,
 	.stop_src = TRIG_COUNT,
 	.stop_arg = NB_SCAN,
-	.nb_chan = 3,
+	.nb_chan = 0,
 	.chan_descs = chans,
 };
+
+using namespace DAQ;
+
+int dump_text(a4l_desc_t *dsc, a4l_cmd_t *cmd, unsigned char *buf, int size)
+{
+	static int cur_chan;
+
+	int i, err = 0, tmp_size = 0;
+	char *fmts[MAX_NB_CHAN];
+	a4l_chinfo_t *chans[MAX_NB_CHAN];
+
+	for (i = 0; i < cmd->nb_chan; i++) {
+		int width;
+
+		err = a4l_get_chinfo(dsc,
+				cmd->idx_subd,
+				cmd->chan_descs[i], &chans[i]);
+		if (err < 0) {
+			fprintf(stderr,
+					"cmd_read: a4l_get_chinfo failed (ret=%d)\n",
+					err);
+			goto out;
+		}
+
+		width = a4l_sizeof_chan(chans[i]);
+		if (width < 0) {
+			fprintf(stderr,
+					"cmd_read: incoherent info for channel %d\n",
+					cmd->chan_descs[i]);
+			err = width;
+			goto out;
+		}
+
+		switch(width) {
+			case 1:
+				fmts[i] = "0x%02x ";
+				break;
+			case 2:
+				fmts[i] = "0x%04x ";
+				break;
+			case 4:
+			default:
+				fmts[i] = "0x%08x ";
+				break;
+		}
+	}
+
+	while (tmp_size < size) {
+		unsigned long value;
+
+		err = a4l_rawtoul(chans[cur_chan], &value, buf + tmp_size, 1);
+		if (err < 0)
+			goto out;
+
+		fprintf(stdout, fmts[cur_chan], value);
+
+		/* We assume a4l_sizeof_chan() cannot return because
+			 we already called it on the very same channel
+			 descriptor */
+		tmp_size += a4l_sizeof_chan(chans[cur_chan]);
+
+		if(++cur_chan == cmd->nb_chan) {
+			fprintf(stdout, "\n");
+			cur_chan = 0;
+		}
+	}
+
+	fflush(stdout);
+
+out:
+	return err;
+}
 
 AnalogyDevice::AnalogyDevice(a4l_desc_t *d,std::string name,IO::channel_t *chan,size_t size) : DAQ::Device(name,chan,size), dsc(*d) {
 
@@ -243,6 +243,7 @@ AnalogyDevice::AnalogyDevice(a4l_desc_t *d,std::string name,IO::channel_t *chan,
 		subdevice[DIO].count = 0;
 		subdevice[DIO].chan = NULL;
 	}
+	readAsync();
 	setActive(true);
 }
 
@@ -501,8 +502,8 @@ int AnalogyDevice::setDigitalDirection(index_t channel,direction_t direction) {
 }
 
 // Acquire data - synchronously
-/*void AnalogyDevice::read(void) {
-	lsampl_t sample;
+void AnalogyDevice::read(void) {
+	/*lsampl_t sample;
 	analog_channel_t *channel;
 	int ref = 0;
 	int size = 0;
@@ -541,12 +542,11 @@ int AnalogyDevice::setDigitalDirection(index_t channel,direction_t direction) {
 		if(subdevice[DIO].chan[i].active && subdevice[DIO].chan[i].digital.direction == DAQ::INPUT) {
 			mask = (1<<i);
 			output(i+offset) = (data & mask);
-		}
-}*/
+		}*/
+}
 
 // Acquire data - asynchronously
-void AnalogyDevice::read(void) {
-	printf("calling\n");
+void AnalogyDevice::readAsync(void) {
 	int ret = 0, len, ofs;
 	unsigned int i, scan_size = 0, cnt = 0;
 	unsigned long buf_size;
@@ -573,7 +573,8 @@ void AnalogyDevice::read(void) {
 
 	/* Open the device - already done by driver */
 	ret = a4l_open(&dsc, filename);
-	if (ret < 0) {
+	if (ret < 0)
+	{
 		fprintf(stderr, "cmd_read: a4l_open %s failed (ret=%d)\n",filename, ret);
 		//return ret;
 	}
@@ -586,35 +587,37 @@ void AnalogyDevice::read(void) {
 
 	/* Allocate a buffer so as to get more info (subd, chan, rng) */
 	dsc.sbdata = malloc(dsc.sbsize);
-	if (dsc.sbdata == NULL) {
+	if (dsc.sbdata == NULL)
+	{
 		fprintf(stderr, "cmd_read: malloc failed \n");
 		//return -ENOMEM;
 	}
 
 	/* Get this data - already done by driver */
 	ret = a4l_fill_desc(&dsc);
-	if (ret < 0) {
+	if (ret < 0)
+	{
 		fprintf(stderr,"cmd_read: a4l_fill_desc failed (ret=%d)\n", ret);
-		//goto out_main;
+		goto out_main;
 	}
 
 	printf("cmd_read: complex descriptor retrieved\n");
 
 	/* Get the size of a single acquisition */
-	for (i = 0; i < cmd.nb_chan; i++) {
+	for (i = 0; i < cmd.nb_chan; i++)
+	{
 		a4l_chinfo_t *info;
 
 		ret = a4l_get_chinfo(&dsc, cmd.idx_subd, cmd.chan_descs[i], &info);
-		if (ret < 0) {
+		if (ret < 0)
+		{
 			fprintf(stderr,"cmd_read: a4l_get_chinfo failed (ret=%d)\n",ret);
-			break;
-			//goto out_main;
+			goto out_main;
 		}
 
 		printf("cmd_read: channel %x\n", cmd.chan_descs[i]);
 		printf("\t ranges count = %d\n", info->nb_rng);
 		printf("\t bit width = %d (bits)\n", info->nb_bits);
-
 		scan_size += a4l_sizeof_chan(info);
 	}
 
@@ -626,69 +629,80 @@ void AnalogyDevice::read(void) {
 	a4l_snd_cancel(&dsc, cmd.idx_subd);
 
 	ret = a4l_get_bufsize(&dsc, cmd.idx_subd, &buf_size);
-	if (ret < 0) {
+	if (ret < 0)
+	{
 		fprintf(stderr,"cmd_read: a4l_get_bufsize() failed (ret=%d)\n",ret);
-		//goto out_main;
+		goto out_main;
 	}
 	printf("cmd_read: buffer size = %lu bytes\n", buf_size);
 
 	/* Map the analog input subdevice buffer */
 	ret = a4l_mmap(&dsc, cmd.idx_subd, buf_size, &map);
-	if (ret < 0) {
+	if (ret < 0)
+	{
 		fprintf(stderr,"cmd_read: a4l_mmap() failed (ret=%d)\n",ret);
-		//goto out_main;
+		goto out_main;
 	}
 	printf("cmd_read: mmap performed successfully (map=0x%p)\n", map);
 
 	ret = a4l_set_wakesize(&dsc, wake_count);
-	if (ret < 0) {
+	if (ret < 0)
+	{
 		fprintf(stderr,"cmd_read: a4l_set_wakesize failed (ret=%d)\n", ret);
-		//goto out_main;
+		goto out_main;
 	}
 	printf("cmd_read: wake size successfully set (%lu)\n", wake_count);
 
 	/* Send the command to the input device */
 	ret = a4l_snd_command(&dsc, &cmd);
-	if (ret < 0) {
+	if (ret < 0)
+	{
 		fprintf(stderr,"cmd_read: a4l_snd_command failed (ret=%d)\n", ret);
-		//goto out_main;
+		goto out_main;
 	}
 	printf("cmd_read: command successfully sent\n");
 
-	unsigned long front = 0;
+	unsigned long front;
+	front = 0;
 
 	/* Fetch data without any memcpy */
-	do {
-
+	do
+	{
 		/* Retrieve and update the buffer's state
 			 (In input case, we recover how many bytes are available
 			 to read) */
 		ret = a4l_mark_bufrw(&dsc, cmd.idx_subd, front, &front);
 		if (ret == -ENOENT)
+		{
 			break;
-		else if (ret < 0) {
+		}
+		else if (ret < 0)
+		{
 			fprintf(stderr,"cmd_read: a4l_mark_bufrw() failed (ret=%d)\n",ret);
-			//goto out_main;
+			goto out_main;
 		}
 
 		/* If there is nothing to read, wait for an event
 			 (Note that a4l_poll() also retrieves the data amount
 			 to read; in our case it is useless as we have to update
 			 the data read counter) */
-		if (front == 0) {
+		if (front == 0)
+		{
 			ret = a4l_poll(&dsc, cmd.idx_subd, A4L_INFINITE);
 			if (ret == 0)
 				break;
-			else if (ret < 0) {
+			else if (ret < 0)
+			{
 				fprintf(stderr,"cmd_read: a4l_poll() failed (ret=%d)\n",ret);
-				//goto out_main;
+				goto out_main;
 			}
 		}
 
 		/* Display the results */
-		if (dump_function(&dsc,	&cmd,	&((unsigned char *)map)[cnt % buf_size],front) < 0) {
+		if (dump_function(&dsc,	&cmd,	&((unsigned char *)map)[cnt % buf_size],front) < 0)
+		{
 			ret = -EIO;
-			//goto out_main;
+			goto out_main;
 		}
 
 		/* Update the counter */
@@ -698,14 +712,16 @@ void AnalogyDevice::read(void) {
 	printf("cmd_read: %d bytes successfully received\n", cnt);
 	ret = 0;
 
-//out_main:
-	//if (use_mmap != 0)
-		/* Clean the pages table */
-		//munmap(map, buf_size);
+out_main:
+	/* Clean the pages table */
+	munmap(map, buf_size);
 
 	/* Free the buffer used as device descriptor */
-	//if (dsc.sbdata != NULL)
-		//free(dsc.sbdata);
+	if (dsc.sbdata != NULL)
+		free(dsc.sbdata);
+
+	/* Release the file descriptor */
+	a4l_close(&dsc);
 
 	//return ret;
 }
@@ -756,9 +772,11 @@ void AnalogyDevice::write(void) {
 		int value;
 		int data = 0, mask = 0;
 
-		for(size_t i=0;i < subdevice[DIO].count;++i) {
+		for(size_t i=0;i < subdevice[DIO].count;++i)
+		{
 			value = input(i+offset) != 0.0; 
-			if(subdevice[DIO].chan[i].active && subdevice[DIO].chan[i].digital.direction == DAQ::OUTPUT && subdevice[DIO].chan[i].digital.previous_value != value) {
+			if(subdevice[DIO].chan[i].active && subdevice[DIO].chan[i].digital.direction == DAQ::OUTPUT && subdevice[DIO].chan[i].digital.previous_value != value)
+			{
 				subdevice[DIO].chan[i].digital.previous_value = value;
 				data ^= (1<<i); // Toggle the i-th bit
 				mask |= (1<<i); // Set i-th bit for modification

@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <native/task.h>
 #include <analogy/analogy.h>
 
 class AnalogyDevice : public DAQ::Device {
@@ -65,6 +66,7 @@ class AnalogyDevice : public DAQ::Device {
 		int setDigitalDirection(DAQ::index_t,DAQ::direction_t);
 
 		void read(void);
+		//void readAsync(void);
 		void write(void);
 
 	protected:

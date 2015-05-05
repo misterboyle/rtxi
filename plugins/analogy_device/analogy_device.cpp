@@ -26,15 +26,15 @@
 /* For simplicity sake, a maximum channel count is defined */
 #define MAX_NB_CHAN 32
 /* One hundred triggered scans by default */
-#define NB_SCAN 1000
+#define NB_SCAN 100
 /* Default name of analogy */
 #define FILENAME "analogy0"
 /* Default buffer size */
-#define BUF_SIZE 30000
+#define BUF_SIZE 100000
 
 static unsigned char buf[BUF_SIZE];
 static char *filename = FILENAME;
-static char *str_chans = "2";
+static char *str_chans = "1,2";
 static unsigned int chans[MAX_NB_CHAN];
 static int use_mmap = 1;
 static unsigned long wake_count = 0;

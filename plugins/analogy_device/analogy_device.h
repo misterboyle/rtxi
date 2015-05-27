@@ -66,7 +66,9 @@ class AnalogyDevice : public DAQ::Device {
 		DAQ::direction_t getDigitalDirection(DAQ::index_t) const;
 		int setDigitalDirection(DAQ::index_t,DAQ::direction_t);
 
+		void initAsync(void);
 		void read(void);
+		void readSync(void);
 		void readAsync(void);
 		void write(void);
 
@@ -112,6 +114,10 @@ class AnalogyDevice : public DAQ::Device {
 		std::string deviceName;
 		subdevice_t subdevice[3];
 		a4l_desc_t dsc;
+		void *map = NULL;
+		unsigned long buf_size;
+		int len, ofs, ret;
+		unsigned int i, scan_size = 0, cnt = 0;
 };
 
 #endif /* ANALOGY_DEVICE_H */

@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <native/task.h>
 #include <analogy/analogy.h>
+#include <pthread.h>
 
 class AnalogyDevice : public DAQ::Device {
 
@@ -69,6 +70,7 @@ class AnalogyDevice : public DAQ::Device {
 		void initAsync(void);
 		void read(void);
 		void readSync(void);
+		void acquireAsyncData();
 		void readAsync(void);
 		void write(void);
 
@@ -78,6 +80,7 @@ class AnalogyDevice : public DAQ::Device {
 
 	private:
 		bool analog_exists(DAQ::type_t,DAQ::index_t) const;
+		static void *bounce(void *);
 
 		struct analog_channel_t {
 			double gain;
@@ -111,6 +114,8 @@ class AnalogyDevice : public DAQ::Device {
 			channel_t *chan;
 		};
 
+		pthread_t thread;
+		bool asyncStatus;
 		std::string deviceName;
 		subdevice_t subdevice[3];
 		a4l_desc_t dsc;

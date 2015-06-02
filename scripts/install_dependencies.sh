@@ -24,7 +24,6 @@
 DIR=$PWD
 ROOT=${DIR}/../
 DEPS=${ROOT}/deps
-HDF=${DEPS}/hdf
 QWT=${DEPS}/qwt
 DYN=${DEPS}/dynamo
 PLG=${ROOT}/plugins
@@ -37,9 +36,9 @@ sudo apt-get -y upgrade
 sudo apt-get -y install autotools-dev automake libtool
 sudo apt-get -y install kernel-package
 sudo apt-get -y install fakeroot crash kexec-tools makedumpfile kernel-wedge
-sudo apt-get -y build-dep linux
+sudo apt-get -y build-dep linux 
 sudo apt-get -y install git-core libncurses5 libncurses5-dev libelf-dev binutils-dev libgsl0-dev vim stress libboost-dev
-sudo apt-get -y install qt4-dev-tools libqt4-dev libqt4-opengl-dev
+sudo apt-get -y install qt4-dev-tools libqt4-dev libqt4-opengl-dev libhdf5-serial-dev
 
 if [ $? -eq 0 ]; then
 	echo "----->Dependencies installed."
@@ -50,27 +49,6 @@ fi
 
 # Start at top
 cd ${DEPS}
-
-# Installing HDF5
-echo "----->Checking for HDF5"
-
-if [ -f "/usr/include/hdf5.h" ]; then
-	echo "----->HDF5 already installed."
-else
-	echo "----->Installing HDF5..."
-	cd ${HDF}
-	tar xf hdf5-1.8.4.tar.bz2
-	cd hdf5-1.8.4
-	./configure --prefix=/usr
-	make -sj2
-	sudo make install
-	if [ $? -eq 0 ]; then
-			echo "----->HDF5 installed."
-	else
-		echo "----->HDF5 installation failed."
-		exit
-	fi
-fi
 
 # Installing Qwt
 echo "----->Checking for Qwt"

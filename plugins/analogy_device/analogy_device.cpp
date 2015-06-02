@@ -561,28 +561,28 @@ void AnalogyDevice::initAsync(void) {
 	}*/
 
 	/*printf("cmd_read: device %s opened (fd=%d)\n",filename, dsc.fd);
-		printf("cmd_read: basic descriptor retrieved\n");
-		printf("\t subdevices count = %d\n", dsc.nb_subd);
-		printf("\t read subdevice index = %d\n", dsc.idx_read_subd);
-		printf("\t write subdevice index = %d\n", dsc.idx_write_subd);*/
+	printf("cmd_read: basic descriptor retrieved\n");
+	printf("\t subdevices count = %d\n", dsc.nb_subd);
+	printf("\t read subdevice index = %d\n", dsc.idx_read_subd);
+	printf("\t write subdevice index = %d\n", dsc.idx_write_subd);*/
 
 	/* Allocate a buffer so as to get more info (subd, chan, rng)
-	dsc.sbdata = malloc(dsc.sbsize);
-	if (dsc.sbdata == NULL)
-	{
-		fprintf(stderr, "cmd_read: malloc failed \n");
-		//return -ENOMEM;
+		 dsc.sbdata = malloc(dsc.sbsize);
+		 if (dsc.sbdata == NULL)
+		 {
+		 fprintf(stderr, "cmd_read: malloc failed \n");
+	//return -ENOMEM;
 	}*/
 
 	/* Get this data - already done by driver 
-	ret = a4l_fill_desc(&dsc);
-	if (ret < 0)
-	{
-		fprintf(stderr,"cmd_read: a4l_fill_desc failed (ret=%d)\n", ret);
-		goto out_main;
-	}*/
+		 ret = a4l_fill_desc(&dsc);
+		 if (ret < 0)
+		 {
+		 fprintf(stderr,"cmd_read: a4l_fill_desc failed (ret=%d)\n", ret);
+		 goto out_main;
+		 }*/
 
-	//printf("cmd_read: complex descriptor retrieved\n");
+	printf("cmd_read: complex descriptor retrieved\n");
 
 	/* Get the size of a single acquisition */
 	for (i = 0; i < cmd.nb_chan; i++)
@@ -724,9 +724,7 @@ out_main:
 }
 
 void AnalogyDevice::read(void) {
-	readAsync();
 }
-
 
 void AnalogyDevice::write(void) {
 	{

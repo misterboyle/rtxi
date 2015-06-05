@@ -33,7 +33,7 @@
 // Buffer for data
 static unsigned char buf[BUF_SIZE];
 // Channels to acquire from
-static char *str_chans = "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23";
+static char *str_chans = "0,1,2,3";
 // Data struture
 static unsigned int chans[MAX_NB_CHAN];
 
@@ -46,7 +46,7 @@ a4l_cmd_t cmd = {
 	.scan_begin_src = TRIG_TIMER,
 	.scan_begin_arg = 8000000,	/* in ns */
 	.convert_src = TRIG_TIMER,
-	.convert_arg = 250000,	/* in ns */
+	.convert_arg = 500000,	/* in ns */
 	.scan_end_src = TRIG_COUNT,
 	.scan_end_arg = 0,
 	.stop_src = TRIG_COUNT,
@@ -645,7 +645,7 @@ void AnalogyDevice::acquireAsyncData()
 		//	 the data read counter)
 		if (front == 0)
 		{
-			ret = a4l_poll(&dsc, cmd.idx_subd, A4L_NONBLOCK);
+			ret = a4l_poll(&dsc, cmd.idx_subd, A4L_INFINITE);
 			if (ret == 0)
 				break;
 			else if (ret < 0)

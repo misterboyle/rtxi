@@ -26,14 +26,14 @@
 // For simplicity sake, a maximum channel count is defined
 #define MAX_NB_CHAN 32
 // One hundred triggered scans by default
-#define NB_SCAN 1
+#define NB_SCAN 25
 // Default buffer size in bytes
-#define BUF_SIZE 100000
+#define BUF_SIZE 1024000
 
 // Buffer for data
 static unsigned char buf[BUF_SIZE];
 // Channels to acquire from
-static char *str_chans = "0,1,2,3";
+static char *str_chans = "0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15";
 // Data struture
 static unsigned int chans[MAX_NB_CHAN];
 
@@ -44,9 +44,9 @@ a4l_cmd_t cmd = {
 	.start_src = TRIG_NOW,
 	.start_arg = 0,
 	.scan_begin_src = TRIG_TIMER,
-	.scan_begin_arg = 8000000,	/* in ns */
+	.scan_begin_arg = 1000000,	/* in ns */
 	.convert_src = TRIG_TIMER,
-	.convert_arg = 500000,	/* in ns */
+	.convert_arg = 62500,	/* in ns */
 	.scan_end_src = TRIG_COUNT,
 	.scan_end_arg = 0,
 	.stop_src = TRIG_COUNT,
@@ -94,18 +94,20 @@ int dump_text(a4l_desc_t *dsc, a4l_cmd_t *cmd, unsigned char *buf, int size)
 		}
 	}
 
+	FILE *pfile;
+	pfile = fopen("output.txt","a");
 	while (tmp_size < size) {
 		unsigned long value;
 		err = a4l_rawtoul(chans[cur_chan], &value, buf + tmp_size, 1);
 		if (err < 0)
 			goto out;
-		fprintf(stdout, fmts[cur_chan], value);
+		fprintf(pfile, fmts[cur_chan], value);
 
 		// We assume a4l_sizeof_chan() cannot return because
 		// we already called it on the very same channel descriptor
 		tmp_size += a4l_sizeof_chan(chans[cur_chan]);
 		if(++cur_chan == cmd->nb_chan) {
-			fprintf(stdout, "\n");
+			fprintf(pfile, "\n");
 			cur_chan = 0;
 		}
 	}
@@ -658,11 +660,10 @@ void AnalogyDevice::acquireAsyncData()
 
 		// Update the counter
 		cnt += front;
-
 	}
-	printf("cmd_read: %d bytes successfully received\n", cnt);
+	printf("cmd_read: %d bytes successfully received \n", cnt);
 	cnt = 0;
-	sleep(5);
+	sleep(.01);
 	ret = 0;
 }
 
